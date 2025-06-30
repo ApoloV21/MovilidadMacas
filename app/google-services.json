@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "209731271478",
+    "firebase_url": "https://agrega-app-android-default-rtdb.firebaseio.com",
+    "project_id": "agrega-app-android",
+    "storage_bucket": "agrega-app-android.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:209731271478:android:3afcd95392b0b73d08d197",
+        "android_client_info": {
+          "package_name": "com.example.movilidadmacas"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "209731271478-b9itu3hac4qk1gq0khj4oh5r7g1h0qt1.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.movilidadmacas",
+            "certificate_hash": "a1154d098239c745fb64e835affd81263ced54d7"
+          }
+        },
+        {
+          "client_id": "209731271478-u9h0jfmr1ip1ij9drvsoc2p3ljf5lt5e.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAjmvEvZqONbwMJn8P5-ac7jutnEzdc_w8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "209731271478-u9h0jfmr1ip1ij9drvsoc2p3ljf5lt5e.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
