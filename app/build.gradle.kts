@@ -2,6 +2,9 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.google.services)
+    id("kotlin-parcelize")
+    alias(libs.plugins.kotlin.kapt)
 }
 
 android {
@@ -16,6 +19,7 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
     }
 
     buildTypes {
@@ -56,5 +60,43 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
-    implementation ("org.osmdroid:osmdroid-android:6.1.16")
+    implementation (libs.osmdroid.android)
+    implementation (platform("com.google.firebase:firebase-bom:33.15.0"))
+    implementation (libs.firebase.database.ktx)
+    implementation (libs.firebase.analytics)
+    implementation (libs.play.services.location)
+    implementation (libs.androidx.navigation.compose)
+    implementation(libs.androidx.material.icons.extended)
+    implementation(libs.material3)
+    implementation(libs.androidx.material3.v121)
+    implementation(libs.okhttp)
+    implementation(libs.json)
+    implementation(libs.retrofit)
+    implementation(libs.converter.gson)
+    // Para dibujar polilíneas en el mapa
+    implementation(libs.osmdroid.mapsforge)
+    implementation(libs.androidx.room.runtime)
+    kapt("androidx.room:room-compiler:2.7.2")
+    implementation (libs.androidx.room.ktx)
+    implementation(libs.kotlinx.coroutines.play.services)
+    implementation (libs.kotlinx.serialization.json)
+    // Hilt
+    implementation(libs.hilt.android)
+    kapt(libs.hilt.compiler)
+
+    // Connectivity
+    implementation(libs.androidx.core.ktx.v1120)
+    implementation(libs.androidx.hilt.navigation.compose)
+
+// ViewModel
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.firebase.auth.ktx)
+    implementation(libs.firebase.auth)
+    implementation(libs.play.services.auth)
+    implementation(libs.play.services.auth.v2070) // Última versión
+    implementation(libs.google.firebase.auth.ktx)
+
+
 }
+
+apply(plugin = "com.google.gms.google-services")
