@@ -95,6 +95,7 @@ dependencies {
     implementation(libs.play.services.auth)
     implementation(libs.play.services.auth.v2070) // Última versión
     implementation(libs.google.firebase.auth.ktx)
+    implementation(libs.google.firebase.database.ktx)
 
 
 }

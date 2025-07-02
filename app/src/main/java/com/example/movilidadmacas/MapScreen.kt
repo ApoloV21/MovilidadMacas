@@ -44,10 +44,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.filled.Directions
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.ui.draw.shadow
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.withContext
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import com.example.movilidadmacas.Screen
 
 const val ORS_API_KEY = "5b3ce3597851110001cf624827a7fadd6b1e4aaab404f048cce98d64"
 
@@ -59,6 +63,7 @@ fun MapScreen(navController: NavHostController) {
     val paradas = remember { mutableStateListOf<Parada>() }
     var mapView by remember { mutableStateOf<MapView?>(null) }
     var searchQuery by remember { mutableStateOf("") }
+    val userId = FirebaseAuth.getInstance().currentUser?.uid
 
     val locationPermissionGranted = remember {
         mutableStateOf(
@@ -96,7 +101,10 @@ fun MapScreen(navController: NavHostController) {
                 paradas.clear()
                 for (paradaSnap in snapshot.children) {
                     val parada = paradaSnap.getValue(Parada::class.java)
-                    parada?.let { paradas.add(it) }
+                    parada?.let {
+                        it.id = paradaSnap.key ?: ""
+                        paradas.add(it)
+                    }
                 }
             }
 
@@ -195,6 +203,7 @@ fun MapScreen(navController: NavHostController) {
             }
         )
 
+
         // Lista de resultados filtrados
         val paradasFiltradas = paradas.filter {
             searchQuery.isNotBlank() &&
@@ -224,6 +233,7 @@ fun MapScreen(navController: NavHostController) {
                                 val marker = Marker(mapView)
                                 marker.position = punto
                                 marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                                marker.icon = ContextCompat.getDrawable(context, R.drawable.icono_movilidad)
                                 marker.title = parada.nombre
                                 marker.subDescription = "Rutas: ${parada.rutas.joinToString(", ")}\nHorarios: ${parada.horarios.joinToString(", ")}"
                                 marker.showInfoWindow()
@@ -256,8 +266,46 @@ fun MapScreen(navController: NavHostController) {
                 Column(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
-                        .padding(16.dp)
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.End
                 ) {
+                    // ⭐ Botón de favoritos
+                    val isFavorita = remember { mutableStateOf(false) }
+
+                    LaunchedEffect(parada.id) {
+                        userId?.let {
+                            isFavorita.value = FavoritosRepository.esFavorita(it, parada.id)
+                        }
+                    }
+
+                    val userId = FirebaseAuth.getInstance().currentUser?.uid
+
+                    IconToggleButton(
+                        checked = isFavorita.value,
+                        onCheckedChange = { checked ->
+                            isFavorita.value = checked
+                            parada.isFavorita = checked
+
+                            CoroutineScope(Dispatchers.IO).launch {
+                                if (userId != null) {
+                                    if (checked) {
+                                        FavoritosRepository.agregarAFavoritos(userId, parada.id)
+                                    } else {
+                                        FavoritosRepository.eliminarDeFavoritos(userId, parada.id)
+                                    }
+                                }
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = if (isFavorita.value) Icons.Default.Star else Icons.Default.StarBorder,
+                            contentDescription = if (isFavorita.value) "Eliminar de favoritos" else "Agregar a favoritos"
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // 🟦 Trazar Ruta
                     ExtendedFloatingActionButton(
                         onClick = {
                             val userLocation = ubicacionUsuario
@@ -265,7 +313,6 @@ fun MapScreen(navController: NavHostController) {
                                 val stopLocation = GeoPoint(parada.lat, parada.lon)
                                 drawRoute(userLocation, stopLocation)
                             } else {
-                                // Mostrar alerta de que no hay ubicación disponible
                                 Log.e("Ruta", "Ubicación del usuario no disponible")
                             }
                         },
@@ -274,12 +321,15 @@ fun MapScreen(navController: NavHostController) {
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
 
+                    // ℹ️ Ver Detalles
                     ExtendedFloatingActionButton(
                         onClick = {
                             val nombre = Uri.encode(parada.nombre)
                             val rutas = Uri.encode(parada.rutas.joinToString(","))
                             val horarios = Uri.encode(parada.horarios.joinToString(","))
-                            navController.navigate("detalleParada/$nombre/$rutas/$horarios")
+                            val ruta = Screen.DetalleParada.createRoute(parada.id, parada.nombre, parada.rutas, parada.horarios)
+                            navController.navigate(ruta)
+
                         },
                         icon = { Icon(Icons.Filled.Info, "Detalles") },
                         text = { Text("Ver Detalles") }
@@ -287,6 +337,7 @@ fun MapScreen(navController: NavHostController) {
                 }
             }
         }
+
 
 
         // Mostrar marcadores en el mapa
@@ -302,7 +353,8 @@ fun MapScreen(navController: NavHostController) {
                         val nombre = Uri.encode(parada.nombre)
                         val rutas = Uri.encode(parada.rutas.joinToString(","))
                         val horarios = Uri.encode(parada.horarios.joinToString(","))
-                        navController.navigate("detalleParada/$nombre/$rutas/$horarios")
+                        val ruta = Screen.DetalleParada.createRoute(parada.id, parada.nombre, parada.rutas, parada.horarios)
+                        navController.navigate(ruta)
                         true
                     }
                     marcador.subDescription =
@@ -326,7 +378,7 @@ fun MapScreen(navController: NavHostController) {
                     fusedClient.lastLocation.addOnSuccessListener { location ->
                         if (location != null) {
                             val point = GeoPoint(location.latitude, location.longitude)
-                            ubicacionUsuario = point // ✅ GUARDAR para usar luego
+                            ubicacionUsuario = point // GUARDAR para usar luego
                             mapView?.controller?.animateTo(point)
                             val marker = Marker(mapView)
                             marker.position = point
@@ -350,5 +402,21 @@ fun MapScreen(navController: NavHostController) {
                     .padding(8.dp)
             )
         }
+        FloatingActionButton(
+            onClick = {
+                navController.navigate("favoritos")
+            },
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(16.dp),
+            containerColor = MaterialTheme.colorScheme.primary
+        ) {
+            Icon(
+                imageVector = Icons.Default.Star,
+                contentDescription = "Ver Favoritos",
+                tint = MaterialTheme.colorScheme.onPrimary
+            )
+        }
+
     }
 }

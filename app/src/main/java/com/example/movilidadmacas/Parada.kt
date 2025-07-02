@@ -10,7 +10,8 @@ data class Parada(
     val lat: Double = 0.0,
     val lon: Double = 0.0,
     val rutas: List<String> = emptyList(),
-    val horarios: List<String> = emptyList()
+    val horarios: List<String> = emptyList(),
+    @Transient var isFavorita: Boolean = false
 ) {
     constructor() : this("") // Constructor vacío obligatorio para Firebase
 }

@@ -72,7 +72,7 @@ fun AuthScreen(navController: NavHostController) {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Bienvenido", style = MaterialTheme.typography.headlineMedium)
+        Text("Bienvenido a Movilidad Macas", style = MaterialTheme.typography.headlineMedium)
 
         Spacer(modifier = Modifier.height(32.dp))
 
