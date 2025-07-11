@@ -22,7 +22,9 @@ fun DetalleParadaScreen(
     id: String,
     nombre: String,
     rutas: List<String>,
-    horarios: List<String>,
+    inicio: String,
+    fin: String,
+    frecuencia: String,
     navController: NavHostController
 ) {
     val userId = FirebaseAuth.getInstance().currentUser?.uid
@@ -58,9 +60,9 @@ fun DetalleParadaScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             Text("⏰ Horarios estimados:", style = MaterialTheme.typography.titleMedium)
-            horarios.forEach { horario ->
-                Text("• $horario", style = MaterialTheme.typography.bodyLarge)
-            }
+            Text("• Inicio: $inicio", style = MaterialTheme.typography.bodyLarge)
+            Text("• Fin: $fin", style = MaterialTheme.typography.bodyLarge)
+            Text("• Frecuencia: $frecuencia", style = MaterialTheme.typography.bodyLarge)
         }
 
         // ⭐ Botón para marcar como favorito

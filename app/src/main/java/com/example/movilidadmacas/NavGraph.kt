@@ -18,11 +18,13 @@ sealed class Screen(val route: String) {
             id: String,
             nombre: String,
             rutas: List<String>,
-            horarios: List<String>,
+            inicio: String,
+            fin: String,
+            frecuencia: String,
             lat: Double,
             lon: Double
         ): String {
-            return "detalleParada/${Uri.encode(id)}/${Uri.encode(nombre)}/${Uri.encode(rutas.joinToString(","))}/${Uri.encode(horarios.joinToString(","))}"
+            return "detalleParada/${Uri.encode(id)}/${Uri.encode(nombre)}/${Uri.encode(rutas.joinToString(","))}/${Uri.encode(inicio)}/${Uri.encode(fin)}/${Uri.encode(frecuencia)}"
         }
     }
     object Login : Screen("login")
@@ -47,22 +49,29 @@ fun AppNavGraph(navController: NavHostController) {
         composable(Screen.Register.route) { RegisterScreen(navController) }
         composable(Screen.Inicio.route) { InicioScreen(navController) }
         composable(Screen.Mapa.route) { MapScreen(navController) }
+        composable("loginEmail") { LoginEmailScreen(navController)}
         composable("auth") { AuthScreen(navController) }
         composable(
-            route = "detalleParada/{id}/{nombre}/{rutas}/{horarios}",
+            route = "detalleParada/{id}/{nombre}/{rutas}/{inicio}/{fin}/{frecuencia}",
             arguments = listOf(
                 navArgument("id") { type = NavType.StringType },
                 navArgument("nombre") { type = NavType.StringType },
                 navArgument("rutas") { type = NavType.StringType },
-                navArgument("horarios") { type = NavType.StringType }
+                navArgument("inicio") { type = NavType.StringType },
+                navArgument("fin") { type = NavType.StringType },
+                navArgument("frecuencia") { type = NavType.StringType }
             )
         ) { backStackEntry ->
             val id = backStackEntry.arguments?.getString("id")?.let { Uri.decode(it) } ?: ""
             val nombre = backStackEntry.arguments?.getString("nombre")?.let { Uri.decode(it) } ?: ""
             val rutas = backStackEntry.arguments?.getString("rutas")?.let { Uri.decode(it).split(",") } ?: emptyList()
-            val horarios = backStackEntry.arguments?.getString("horarios")?.let { Uri.decode(it).split(",") } ?: emptyList()
+            val inicio = backStackEntry.arguments?.getString("inicio")?.let { Uri.decode(it) } ?: ""
+            val fin = backStackEntry.arguments?.getString("fin")?.let { Uri.decode(it) } ?: ""
+            val frecuencia = backStackEntry.arguments?.getString("frecuencia")?.let { Uri.decode(it) } ?: ""
 
-            DetalleParadaScreen(id, nombre, rutas, horarios, navController)
+
+            DetalleParadaScreen(id = id, nombre = nombre, rutas = rutas, inicio = inicio, fin = fin, frecuencia = frecuencia, navController = navController)
+
         }
         composable(Screen.Favoritos.route) {
             FavoritosScreen(navController)

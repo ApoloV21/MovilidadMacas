@@ -1,6 +1,7 @@
 package com.example.movilidadmacas
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.preference.PreferenceManager
@@ -51,6 +52,8 @@ import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.withContext
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 
 const val ORS_API_KEY = "5b3ce3597851110001cf624827a7fadd6b1e4aaab404f048cce98d64"
 
@@ -86,7 +89,20 @@ fun MapScreen(navController: NavHostController, destino: GeoPoint? = null) {
     var showRouteButton by remember { mutableStateOf(false) }
     var ubicacionUsuario by remember { mutableStateOf<GeoPoint?>(null) }
 
-    // Cargar configuración y datos
+    val repository = remember {
+        OfflineParadaRepository(context)
+    }
+
+    fun isInternetAvailable(context: Context): Boolean {
+        val connectivityManager =
+            context.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+        val network = connectivityManager.activeNetwork
+        val capabilities = connectivityManager.getNetworkCapabilities(network)
+        return capabilities != null && capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    }
+
+
+
     LaunchedEffect(Unit) {
         Configuration.getInstance().load(
             context,
@@ -96,22 +112,41 @@ fun MapScreen(navController: NavHostController, destino: GeoPoint? = null) {
             permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
         }
 
-        val db = FirebaseDatabase.getInstance().getReference("paradas")
-        db.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                paradas.clear()
-                for (paradaSnap in snapshot.children) {
-                    val parada = paradaSnap.getValue(Parada::class.java)
-                    parada?.let {
-                        it.id = paradaSnap.key ?: ""
-                        paradas.add(it)
+        if (isInternetAvailable(context)) {
+            val db = FirebaseDatabase.getInstance().getReference("paradas")
+            db.addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    val lista = mutableListOf<Parada>()
+                    for (paradaSnap in snapshot.children) {
+                        val parada = paradaSnap.getValue(Parada::class.java)
+                        parada?.let {
+                            it.id = paradaSnap.key ?: ""
+                            lista.add(it)
+                        }
+                    }
+
+                    // ✅ Guardar en base de datos local
+                    paradas.clear()
+                    paradas.addAll(lista)
+                    CoroutineScope(Dispatchers.IO).launch {
+                        repository.guardarParadasLocalmente(lista)
                     }
                 }
-            }
 
-            override fun onCancelled(error: DatabaseError) {}
-        })
+                override fun onCancelled(error: DatabaseError) {}
+            })
+        } else {
+            // 🔴 Sin internet: cargar localmente
+            CoroutineScope(Dispatchers.IO).launch {
+                val offlineParadas = repository.obtenerParadasLocalmente()
+                withContext(Dispatchers.Main) {
+                    paradas.clear()
+                    paradas.addAll(offlineParadas)
+                }
+            }
+        }
     }
+
 
     fun drawRoute(start: GeoPoint, end: GeoPoint) {
         val retrofit = Retrofit.Builder()
@@ -232,11 +267,12 @@ fun MapScreen(navController: NavHostController, destino: GeoPoint? = null) {
                                 mapView?.controller?.animateTo(punto, 17.0, 1000L) // Zoom 17 en 1 segundo
 
                                 val marker = Marker(mapView)
+                                mapView?.overlays?.removeAll { it is Marker }
                                 marker.position = punto
                                 marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                                marker.icon = ContextCompat.getDrawable(context, R.drawable.icono_movilidad)
+                                marker.icon = ContextCompat.getDrawable(context, R.drawable.bus_station)
                                 marker.title = parada.nombre
-                                marker.subDescription = "Rutas: ${parada.rutas.joinToString(", ")}\nHorarios: ${parada.horarios.joinToString(", ")}"
+                                marker.subDescription = "Rutas: ${parada.rutas.joinToString(", ")}\nInicio: ${parada.horarios.inicio}\nFin: ${parada.horarios.fin}\nFrecuencia: ${parada.horarios.frecuencia}"
                                 marker.showInfoWindow()
                                 mapView?.overlays?.add(marker)
                                 mapView?.invalidate()
@@ -294,12 +330,14 @@ fun MapScreen(navController: NavHostController, destino: GeoPoint? = null) {
                         onClick = {
                             val nombre = Uri.encode(parada.nombre)
                             val rutas = Uri.encode(parada.rutas.joinToString(","))
-                            val horarios = Uri.encode(parada.horarios.joinToString(","))
+                            val horarios = Uri.encode("${parada.horarios.inicio},${parada.horarios.fin},${parada.horarios.frecuencia}")
                             val ruta = Screen.DetalleParada.createRoute(
                                 parada.id,
                                 parada.nombre,
                                 parada.rutas,
-                                parada.horarios,
+                                parada.horarios.inicio,
+                                parada.horarios.fin,
+                                parada.horarios.frecuencia,
                                 parada.lat,
                                 parada.lon
                             )
@@ -323,16 +361,19 @@ fun MapScreen(navController: NavHostController, destino: GeoPoint? = null) {
                     val marcador = Marker(map)
                     marcador.position = punto
                     marcador.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                    marcador.icon = ContextCompat.getDrawable(context, R.drawable.bus_station)
                     marcador.title = parada.nombre
                     marcador.setOnMarkerClickListener { _, _ ->
                         val nombre = Uri.encode(parada.nombre)
                         val rutas = Uri.encode(parada.rutas.joinToString(","))
-                        val horarios = Uri.encode(parada.horarios.joinToString(","))
+                        val horarios = Uri.encode("${parada.horarios.inicio},${parada.horarios.fin},${parada.horarios.frecuencia}")
                         val ruta = Screen.DetalleParada.createRoute(
                             parada.id,
                             parada.nombre,
                             parada.rutas,
-                            parada.horarios,
+                            parada.horarios.inicio,
+                            parada.horarios.fin,
+                            parada.horarios.frecuencia,
                             parada.lat,
                             parada.lon
                         )
@@ -340,9 +381,8 @@ fun MapScreen(navController: NavHostController, destino: GeoPoint? = null) {
                         true
                     }
                     marcador.subDescription =
-                        "Rutas: ${parada.rutas.joinToString(", ")}\nHorarios: ${
-                            parada.horarios.joinToString(", ")
-                        }"
+                        "Rutas: ${parada.rutas.joinToString(", ")}\nInicio: ${parada.horarios.inicio}\nFin: ${parada.horarios.fin}\nFrecuencia: ${parada.horarios.frecuencia}"
+
                     map.overlays.add(marcador)
                 }
                 map.invalidate()

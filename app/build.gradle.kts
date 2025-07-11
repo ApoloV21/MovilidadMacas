@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.google.services)
     id("kotlin-parcelize")
     alias(libs.plugins.kotlin.kapt)
+    id("kotlin-kapt")
 }
 
 android {
@@ -96,6 +97,10 @@ dependencies {
     implementation(libs.play.services.auth.v2070) // Última versión
     implementation(libs.google.firebase.auth.ktx)
     implementation(libs.google.firebase.database.ktx)
+
+    implementation(libs.androidx.room.runtime.v261)
+    implementation(libs.androidx.room.ktx.v261)
+
 
 
 }

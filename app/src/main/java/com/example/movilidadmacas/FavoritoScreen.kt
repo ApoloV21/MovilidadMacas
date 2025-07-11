@@ -95,7 +95,7 @@ fun FavoritosScreen(navController: NavHostController) {
                             Text(text = parada.nombre, style = MaterialTheme.typography.titleMedium)
                             Spacer(modifier = Modifier.height(4.dp))
                             Text("🚌 Rutas: ${parada.rutas.joinToString()}")
-                            Text("⏰ Horarios: ${parada.horarios.take(3).joinToString()}")
+                            Text("⏰ Horario: ${parada.horarios.inicio} - ${parada.horarios.fin}  •  Cada ${parada.horarios.frecuencia}")
 
                             Spacer(modifier = Modifier.height(8.dp))
                             Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
@@ -106,7 +106,9 @@ fun FavoritosScreen(navController: NavHostController) {
                                                 parada.id,
                                                 parada.nombre,
                                                 parada.rutas,
-                                                parada.horarios,
+                                                parada.horarios.inicio,
+                                                parada.horarios.fin,
+                                                parada.horarios.frecuencia,
                                                 parada.lat,
                                                 parada.lon
                                             )

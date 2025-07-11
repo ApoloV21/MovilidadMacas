@@ -100,14 +100,14 @@ fun AuthScreen(navController: NavHostController) {
         Spacer(modifier = Modifier.height(16.dp))
 
         // Botón Iniciar con correo
-        //OutlinedButton(
-        //    onClick = { navController.navigate("login_email") },
-        //    modifier = Modifier.fillMaxWidth(),
-        //) {
-        //    Icon(Icons.Default.Email, contentDescription = null)
-        //    Spacer(modifier = Modifier.width(8.dp))
-        //    Text("Iniciar sesión con correo")
-        //}
+        OutlinedButton(
+           onClick = { navController.navigate("loginEmail") },
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Icon(Icons.Default.Email, contentDescription = null)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Iniciar sesión con correo")
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
