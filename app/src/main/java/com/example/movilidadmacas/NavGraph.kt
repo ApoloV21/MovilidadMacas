@@ -7,6 +7,8 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.google.firebase.auth.FirebaseAuth
+import org.osmdroid.util.GeoPoint
 
 sealed class Screen(val route: String) {
     object Inicio : Screen("inicio")
@@ -16,7 +18,9 @@ sealed class Screen(val route: String) {
             id: String,
             nombre: String,
             rutas: List<String>,
-            horarios: List<String>
+            horarios: List<String>,
+            lat: Double,
+            lon: Double
         ): String {
             return "detalleParada/${Uri.encode(id)}/${Uri.encode(nombre)}/${Uri.encode(rutas.joinToString(","))}/${Uri.encode(horarios.joinToString(","))}"
         }
@@ -24,11 +28,21 @@ sealed class Screen(val route: String) {
     object Login : Screen("login")
     object Register : Screen("register")
     object Favoritos : Screen("favoritos")
+
+    object RutaMap : Screen("rutaMap/{lat}/{lon}") {
+        fun createRoute(lat: Double, lon: Double): String = "rutaMap/$lat/$lon"
+    }
+
 }
 
 @Composable
 fun AppNavGraph(navController: NavHostController) {
-    NavHost(navController, startDestination = "auth") {
+
+    val auth = FirebaseAuth.getInstance()
+    val currentUser = auth.currentUser
+    val startDestination = if (currentUser != null) "inicio" else "auth"
+
+    NavHost(navController, startDestination) {
         composable(Screen.Login.route) { LoginScreen(navController) }
         composable(Screen.Register.route) { RegisterScreen(navController) }
         composable(Screen.Inicio.route) { InicioScreen(navController) }
@@ -52,6 +66,18 @@ fun AppNavGraph(navController: NavHostController) {
         }
         composable(Screen.Favoritos.route) {
             FavoritosScreen(navController)
+        }
+        composable(
+            route = "rutaMap/{lat}/{lon}",
+            arguments = listOf(
+                navArgument("lat") { type = NavType.StringType },
+                navArgument("lon") { type = NavType.StringType },
+            )
+        ) { backStackEntry ->
+            val lat = backStackEntry.arguments?.getString("lat")?.toDoubleOrNull() ?: 0.0
+            val lon = backStackEntry.arguments?.getString("lon")?.toDoubleOrNull() ?: 0.0
+
+            MapScreen(navController, destino = GeoPoint(lat, lon))
         }
     }
 }

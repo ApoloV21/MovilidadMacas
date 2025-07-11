@@ -2,6 +2,7 @@ package com.example.movilidadmacas
 
 import android.app.Activity
 import android.util.Log
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -99,14 +100,14 @@ fun AuthScreen(navController: NavHostController) {
         Spacer(modifier = Modifier.height(16.dp))
 
         // Botón Iniciar con correo
-        OutlinedButton(
-            onClick = { navController.navigate("login_email") },
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Icon(Icons.Default.Email, contentDescription = null)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Iniciar sesión con correo")
-        }
+        //OutlinedButton(
+        //    onClick = { navController.navigate("login_email") },
+        //    modifier = Modifier.fillMaxWidth(),
+        //) {
+        //    Icon(Icons.Default.Email, contentDescription = null)
+        //    Spacer(modifier = Modifier.width(8.dp))
+        //    Text("Iniciar sesión con correo")
+        //}
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -126,4 +127,31 @@ fun AuthScreen(navController: NavHostController) {
             Text(it, color = MaterialTheme.colorScheme.error)
         }
     }
+    var showExitDialog by remember { mutableStateOf(false) }
+
+    BackHandler(enabled = true) {
+        showExitDialog = true
+    }
+
+    if (showExitDialog) {
+        AlertDialog(
+            onDismissRequest = { showExitDialog = false },
+            title = { Text("Confirmar salida") },
+            text = { Text("¿Está seguro de que quiere salir de la app?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showExitDialog = false
+                    android.os.Process.killProcess(android.os.Process.myPid())
+                }) {
+                    Text("Aceptar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showExitDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+
 }

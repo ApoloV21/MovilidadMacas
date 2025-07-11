@@ -1,5 +1,6 @@
 package com.example.movilidadmacas
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -72,11 +73,37 @@ fun InicioScreen(navController: NavHostController) {
             auth.signOut()
             oneTapClient.signOut().addOnCompleteListener {
                 navController.navigate("auth") {
-                    popUpTo("Inicio") { inclusive = true }
+                    popUpTo("inicio") { inclusive = true }
                 }
             }
         }) {
             Text("Cerrar sesión")
         }
+    }
+    var showExitDialog by remember { mutableStateOf(false) }
+
+    BackHandler(enabled = true) {
+        showExitDialog = true
+    }
+
+    if (showExitDialog) {
+        AlertDialog(
+            onDismissRequest = { showExitDialog = false },
+            title = { Text("Confirmar salida") },
+            text = { Text("¿Está seguro de que quiere salir de la app?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showExitDialog = false
+                    android.os.Process.killProcess(android.os.Process.myPid())
+                }) {
+                    Text("Aceptar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showExitDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
     }
 }

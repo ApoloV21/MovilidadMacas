@@ -64,24 +64,19 @@ fun DetalleParadaScreen(
         }
 
         // ⭐ Botón para marcar como favorito
+        val coroutineScope = rememberCoroutineScope()
+
         FloatingActionButton(
             onClick = {
                 if (userId != null) {
-                    scope.launch {
-                        try {
-                            if (isFavorita) {
-                                FavoritosRepository.eliminarDeFavoritos(userId, id)
-                            } else {
-                                FavoritosRepository.agregarAFavoritos(userId, id)
-                            }
-                            isFavorita = !isFavorita
-                        } catch (e: Exception) {
-                            Log.e("Favoritos", "Error al actualizar favoritos: ${e.message}")
+                    coroutineScope.launch {
+                        if (isFavorita) {
+                            FavoritosRepository.eliminarDeFavoritos(userId, id)
+                        } else {
+                            FavoritosRepository.agregarAFavoritos(userId, id)
                         }
+                        isFavorita = !isFavorita
                     }
-                } else {
-                    Log.e("Favoritos", "Usuario no autenticado")
-                    Log.d("Favoritos", "userId = $userId")
                 }
             },
             containerColor = MaterialTheme.colorScheme.primary,

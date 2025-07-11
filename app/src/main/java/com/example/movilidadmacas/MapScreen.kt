@@ -43,27 +43,28 @@ import android.util.Log
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.filled.Directions
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.ui.draw.shadow
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.withContext
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
-import com.example.movilidadmacas.Screen
 
 const val ORS_API_KEY = "5b3ce3597851110001cf624827a7fadd6b1e4aaab404f048cce98d64"
 
 @Composable
 
-fun MapScreen(navController: NavHostController) {
+fun MapScreen(navController: NavHostController, destino: GeoPoint? = null) {
     var paradaSeleccionada by remember { mutableStateOf<Parada?>(null) }
     val context = LocalContext.current
     val paradas = remember { mutableStateListOf<Parada>() }
     var mapView by remember { mutableStateOf<MapView?>(null) }
     var searchQuery by remember { mutableStateOf("") }
     val userId = FirebaseAuth.getInstance().currentUser?.uid
+    var showMenu by remember { mutableStateOf(false) }
+    var showExitDialog by remember { mutableStateOf(false) }
 
     val locationPermissionGranted = remember {
         mutableStateOf(
@@ -269,39 +270,6 @@ fun MapScreen(navController: NavHostController) {
                         .padding(16.dp),
                     horizontalAlignment = Alignment.End
                 ) {
-                    // ⭐ Botón de favoritos
-                    val isFavorita = remember { mutableStateOf(false) }
-
-                    LaunchedEffect(parada.id) {
-                        userId?.let {
-                            isFavorita.value = FavoritosRepository.esFavorita(it, parada.id)
-                        }
-                    }
-
-                    val userId = FirebaseAuth.getInstance().currentUser?.uid
-
-                    IconToggleButton(
-                        checked = isFavorita.value,
-                        onCheckedChange = { checked ->
-                            isFavorita.value = checked
-                            parada.isFavorita = checked
-
-                            CoroutineScope(Dispatchers.IO).launch {
-                                if (userId != null) {
-                                    if (checked) {
-                                        FavoritosRepository.agregarAFavoritos(userId, parada.id)
-                                    } else {
-                                        FavoritosRepository.eliminarDeFavoritos(userId, parada.id)
-                                    }
-                                }
-                            }
-                        }
-                    ) {
-                        Icon(
-                            imageVector = if (isFavorita.value) Icons.Default.Star else Icons.Default.StarBorder,
-                            contentDescription = if (isFavorita.value) "Eliminar de favoritos" else "Agregar a favoritos"
-                        )
-                    }
 
                     Spacer(modifier = Modifier.height(8.dp))
 
@@ -327,7 +295,14 @@ fun MapScreen(navController: NavHostController) {
                             val nombre = Uri.encode(parada.nombre)
                             val rutas = Uri.encode(parada.rutas.joinToString(","))
                             val horarios = Uri.encode(parada.horarios.joinToString(","))
-                            val ruta = Screen.DetalleParada.createRoute(parada.id, parada.nombre, parada.rutas, parada.horarios)
+                            val ruta = Screen.DetalleParada.createRoute(
+                                parada.id,
+                                parada.nombre,
+                                parada.rutas,
+                                parada.horarios,
+                                parada.lat,
+                                parada.lon
+                            )
                             navController.navigate(ruta)
 
                         },
@@ -353,7 +328,14 @@ fun MapScreen(navController: NavHostController) {
                         val nombre = Uri.encode(parada.nombre)
                         val rutas = Uri.encode(parada.rutas.joinToString(","))
                         val horarios = Uri.encode(parada.horarios.joinToString(","))
-                        val ruta = Screen.DetalleParada.createRoute(parada.id, parada.nombre, parada.rutas, parada.horarios)
+                        val ruta = Screen.DetalleParada.createRoute(
+                            parada.id,
+                            parada.nombre,
+                            parada.rutas,
+                            parada.horarios,
+                            parada.lat,
+                            parada.lon
+                        )
                         navController.navigate(ruta)
                         true
                     }
@@ -391,6 +373,13 @@ fun MapScreen(navController: NavHostController) {
                 }
             }
         }
+
+        LaunchedEffect(destino, ubicacionUsuario) {
+            if (destino != null && ubicacionUsuario != null) {
+                drawRoute(ubicacionUsuario!!, destino)
+            }
+        }
+
         travelTime?.let {
             Text(
                 text = "Tiempo estimado: $it",
@@ -402,21 +391,113 @@ fun MapScreen(navController: NavHostController) {
                     .padding(8.dp)
             )
         }
-        FloatingActionButton(
-            onClick = {
-                navController.navigate("favoritos")
-            },
+
+        Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .padding(16.dp),
-            containerColor = MaterialTheme.colorScheme.primary
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Icon(
-                imageVector = Icons.Default.Star,
-                contentDescription = "Ver Favoritos",
-                tint = MaterialTheme.colorScheme.onPrimary
-            )
-        }
+            // Botón Favoritos
+            FloatingActionButton(
+                onClick = {
+                    navController.navigate("favoritos")
+                },
+                containerColor = MaterialTheme.colorScheme.primary
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Star,
+                    contentDescription = "Ver Favoritos",
+                    tint = MaterialTheme.colorScheme.onPrimary
+                )
+            }
 
+            // Botón Refrescar
+            if (routePolyline != null || paradaSeleccionada != null) {
+                FloatingActionButton(
+                    onClick = {
+                        // Limpiar ruta y selección
+                        routePolyline?.let {
+                            mapView?.overlays?.remove(it)
+                            routePolyline = null
+                        }
+                        paradaSeleccionada = null
+                        showRouteButton = false
+                        travelTime = null
+
+                        // Centrar en ubicación del usuario si existe
+                        ubicacionUsuario?.let {
+                            mapView?.controller?.animateTo(it)
+                        }
+                        mapView?.invalidate()
+                    },
+                    containerColor = MaterialTheme.colorScheme.secondary
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Cancelar Ruta"
+                    )
+                }
+            }
+        }
+        var showMenu by remember { mutableStateOf(false) }
+
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp)
+        ) {
+            FloatingActionButton(
+                onClick = { showMenu = true },
+                containerColor = MaterialTheme.colorScheme.primary
+            ) {
+                Icon(
+                    imageVector = Icons.Default.MoreVert,
+                    contentDescription = "Menú"
+                )
+            }
+
+            DropdownMenu(
+                expanded = showMenu,
+                onDismissRequest = { showMenu = false }
+            ) {
+                DropdownMenuItem(
+                    text = { Text("Regresar a Inicio") },
+                    onClick = {
+                        showMenu = false
+                        navController.navigate("inicio") {
+                            popUpTo("mapa") { inclusive = true }
+                        }
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text("Salir de la App") },
+                    onClick = {
+                        showMenu = false
+                        showExitDialog = true
+                    }
+                )
+            }
+            if (showExitDialog) {
+                AlertDialog(
+                    onDismissRequest = { showExitDialog = false },
+                    title = { Text("Confirmar salida") },
+                    text = { Text("¿Está seguro de que quiere salir?") },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            showExitDialog = false
+                            android.os.Process.killProcess(android.os.Process.myPid())
+                        }) {
+                            Text("Aceptar")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showExitDialog = false }) {
+                            Text("Cancelar")
+                        }
+                    }
+                )
+            }
+        }
     }
 }
